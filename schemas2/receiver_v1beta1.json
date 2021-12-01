@@ -1,5 +1,5 @@
 {
-  "description": "Provider is the Schema for the providers API",
+  "description": "Receiver is the Schema for the receivers API",
   "properties": {
     "apiVersion": {
       "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
@@ -13,38 +13,62 @@
       "type": "object"
     },
     "spec": {
-      "description": "ProviderSpec defines the desired state of Provider",
+      "description": "ReceiverSpec defines the desired state of Receiver",
       "properties": {
-        "address": {
-          "description": "HTTP/S webhook address of this provider",
-          "pattern": "^(http|https)://",
-          "type": "string"
-        },
-        "certSecretRef": {
-          "description": "CertSecretRef can be given the name of a secret containing a PEM-encoded CA certificate (`caFile`)",
-          "properties": {
-            "name": {
-              "description": "Name of the referent",
-              "type": "string"
-            }
+        "events": {
+          "description": "A list of events to handle, e.g. 'push' for GitHub or 'Push Hook' for GitLab.",
+          "items": {
+            "type": "string"
           },
-          "required": [
-            "name"
-          ],
-          "type": "object",
-          "additionalProperties": false
+          "type": "array"
         },
-        "channel": {
-          "description": "Alert channel for this provider",
-          "type": "string"
-        },
-        "proxy": {
-          "description": "HTTP/S address of the proxy",
-          "pattern": "^(http|https)://",
-          "type": "string"
+        "resources": {
+          "description": "A list of resources to be notified about changes.",
+          "items": {
+            "description": "CrossNamespaceObjectReference contains enough information to let you locate the typed referenced object at cluster level",
+            "properties": {
+              "apiVersion": {
+                "description": "API version of the referent",
+                "type": "string"
+              },
+              "kind": {
+                "description": "Kind of the referent",
+                "enum": [
+                  "Bucket",
+                  "GitRepository",
+                  "Kustomization",
+                  "HelmRelease",
+                  "HelmChart",
+                  "HelmRepository",
+                  "ImageRepository",
+                  "ImagePolicy",
+                  "ImageUpdateAutomation"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the referent",
+                "maxLength": 53,
+                "minLength": 1,
+                "type": "string"
+              },
+              "namespace": {
+                "description": "Namespace of the referent",
+                "maxLength": 53,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
         },
         "secretRef": {
-          "description": "Secret reference containing the provider webhook URL using \"address\" as data key",
+          "description": "Secret reference containing the token used to validate the payload authenticity",
           "properties": {
             "name": {
               "description": "Name of the referent",
@@ -62,45 +86,32 @@
           "type": "boolean"
         },
         "type": {
-          "description": "Type of provider",
+          "description": "Type of webhook sender, used to determine the validation procedure and payload deserialization.",
           "enum": [
-            "slack",
-            "discord",
-            "msteams",
-            "rocket",
             "generic",
+            "generic-hmac",
             "github",
             "gitlab",
             "bitbucket",
-            "azuredevops",
-            "googlechat",
-            "webex",
-            "sentry",
-            "azureeventhub",
-            "telegram",
-            "lark",
-            "matrix",
-            "opsgenie",
-            "alertmanager"
+            "harbor",
+            "dockerhub",
+            "quay",
+            "gcr",
+            "nexus",
+            "acr"
           ],
-          "type": "string"
-        },
-        "username": {
-          "description": "Bot username for this provider",
           "type": "string"
         }
       },
       "required": [
+        "resources",
         "type"
       ],
       "type": "object",
       "additionalProperties": false
     },
     "status": {
-      "default": {
-        "observedGeneration": -1
-      },
-      "description": "ProviderStatus defines the observed state of Provider",
+      "description": "ReceiverStatus defines the observed state of Receiver",
       "properties": {
         "conditions": {
           "items": {
@@ -158,9 +169,13 @@
           "type": "array"
         },
         "observedGeneration": {
-          "description": "ObservedGeneration is the last reconciled generation.",
+          "description": "ObservedGeneration is the last observed generation.",
           "format": "int64",
           "type": "integer"
+        },
+        "url": {
+          "description": "Generated webhook URL in the format of '/hook/sha256sum(token+name+namespace)'.",
+          "type": "string"
         }
       },
       "type": "object",

@@ -1,5 +1,5 @@
 {
-  "description": "Provider is the Schema for the providers API",
+  "description": "HelmChart is the Schema for the helmcharts API",
   "properties": {
     "apiVersion": {
       "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
@@ -13,96 +13,110 @@
       "type": "object"
     },
     "spec": {
-      "description": "ProviderSpec defines the desired state of Provider",
+      "description": "HelmChartSpec defines the desired state of a Helm chart.",
       "properties": {
-        "address": {
-          "description": "HTTP/S webhook address of this provider",
-          "pattern": "^(http|https)://",
+        "chart": {
+          "description": "The name or path the Helm chart is available at in the SourceRef.",
           "type": "string"
         },
-        "certSecretRef": {
-          "description": "CertSecretRef can be given the name of a secret containing a PEM-encoded CA certificate (`caFile`)",
+        "interval": {
+          "description": "The interval at which to check the Source for updates.",
+          "type": "string"
+        },
+        "sourceRef": {
+          "description": "The reference to the Source the chart is available at.",
           "properties": {
+            "apiVersion": {
+              "description": "APIVersion of the referent.",
+              "type": "string"
+            },
+            "kind": {
+              "description": "Kind of the referent, valid values are ('HelmRepository', 'GitRepository', 'Bucket').",
+              "enum": [
+                "HelmRepository",
+                "GitRepository",
+                "Bucket"
+              ],
+              "type": "string"
+            },
             "name": {
-              "description": "Name of the referent",
+              "description": "Name of the referent.",
               "type": "string"
             }
           },
           "required": [
-            "name"
-          ],
-          "type": "object",
-          "additionalProperties": false
-        },
-        "channel": {
-          "description": "Alert channel for this provider",
-          "type": "string"
-        },
-        "proxy": {
-          "description": "HTTP/S address of the proxy",
-          "pattern": "^(http|https)://",
-          "type": "string"
-        },
-        "secretRef": {
-          "description": "Secret reference containing the provider webhook URL using \"address\" as data key",
-          "properties": {
-            "name": {
-              "description": "Name of the referent",
-              "type": "string"
-            }
-          },
-          "required": [
+            "kind",
             "name"
           ],
           "type": "object",
           "additionalProperties": false
         },
         "suspend": {
-          "description": "This flag tells the controller to suspend subsequent events handling. Defaults to false.",
+          "description": "This flag tells the controller to suspend the reconciliation of this source.",
           "type": "boolean"
         },
-        "type": {
-          "description": "Type of provider",
-          "enum": [
-            "slack",
-            "discord",
-            "msteams",
-            "rocket",
-            "generic",
-            "github",
-            "gitlab",
-            "bitbucket",
-            "azuredevops",
-            "googlechat",
-            "webex",
-            "sentry",
-            "azureeventhub",
-            "telegram",
-            "lark",
-            "matrix",
-            "opsgenie",
-            "alertmanager"
-          ],
+        "valuesFile": {
+          "description": "Alternative values file to use as the default chart values, expected to be a relative path in the SourceRef. Deprecated in favor of ValuesFiles, for backwards compatibility the file defined here is merged before the ValuesFiles items. Ignored when omitted.",
           "type": "string"
         },
-        "username": {
-          "description": "Bot username for this provider",
+        "valuesFiles": {
+          "description": "Alternative list of values files to use as the chart values (values.yaml is not included by default), expected to be a relative path in the SourceRef. Values files are merged in the order of this list with the last file overriding the first. Ignored when omitted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "version": {
+          "default": "*",
+          "description": "The chart version semver expression, ignored for charts from GitRepository and Bucket sources. Defaults to latest when omitted.",
           "type": "string"
         }
       },
       "required": [
-        "type"
+        "chart",
+        "interval",
+        "sourceRef"
       ],
       "type": "object",
       "additionalProperties": false
     },
     "status": {
-      "default": {
-        "observedGeneration": -1
-      },
-      "description": "ProviderStatus defines the observed state of Provider",
+      "description": "HelmChartStatus defines the observed state of the HelmChart.",
       "properties": {
+        "artifact": {
+          "description": "Artifact represents the output of the last successful chart sync.",
+          "properties": {
+            "checksum": {
+              "description": "Checksum is the SHA1 checksum of the artifact.",
+              "type": "string"
+            },
+            "lastUpdateTime": {
+              "description": "LastUpdateTime is the timestamp corresponding to the last update of this artifact.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "path": {
+              "description": "Path is the relative file path of this artifact.",
+              "type": "string"
+            },
+            "revision": {
+              "description": "Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.",
+              "type": "string"
+            },
+            "url": {
+              "description": "URL is the HTTP address of this artifact.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "url"
+          ],
+          "type": "object",
+          "additionalProperties": false
+        },
         "conditions": {
+          "description": "Conditions holds the conditions for the HelmChart.",
           "items": {
             "description": "Condition contains details for one aspect of the current state of this API Resource. --- This struct is intended for direct use as an array at the field path .status.conditions.  For example, type FooStatus struct{     // Represents the observations of a foo's current state.     // Known .status.conditions.type are: \"Available\", \"Progressing\", and \"Degraded\"     // +patchMergeKey=type     // +patchStrategy=merge     // +listType=map     // +listMapKey=type     Conditions []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"` \n     // other fields }",
             "properties": {
@@ -157,10 +171,18 @@
           },
           "type": "array"
         },
+        "lastHandledReconcileAt": {
+          "description": "LastHandledReconcileAt holds the value of the most recent reconcile request value, so a change can be detected.",
+          "type": "string"
+        },
         "observedGeneration": {
-          "description": "ObservedGeneration is the last reconciled generation.",
+          "description": "ObservedGeneration is the last observed generation.",
           "format": "int64",
           "type": "integer"
+        },
+        "url": {
+          "description": "URL is the download link for the last chart pulled.",
+          "type": "string"
         }
       },
       "type": "object",
