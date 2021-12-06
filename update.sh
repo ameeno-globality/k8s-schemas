@@ -16,3 +16,5 @@ cd ..
 rm crds.yaml
 rm openapi2jsonschema.py
 rm requirements.txt
+
+git add . && git commit -m "updated schemas" && git push
